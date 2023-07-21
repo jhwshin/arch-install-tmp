@@ -58,6 +58,7 @@ BASE_PACKAGES=(
 DE=(
     i3
     dmenu
+    awesome
     xfce4
     xfce4-goodies
     gnome
@@ -80,8 +81,8 @@ ADDITIONAL_PACKAGES=(
     # add more here...
 )
 AUR_PACKAGES=(
-    firefox         # web browser
-    # alacritty     # terminal emulator
+    firefox          # web browser
+    # kitty          # terminal emulator
     # barrier        # kvm
     # deluge         # torrent
     # syncthing      # network file sync
