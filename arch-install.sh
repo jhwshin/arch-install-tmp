@@ -1,43 +1,88 @@
-#!/usr/bin/env bash
+#! /usr/bin/env bash
 
 # ================================================
-#       Arch Installer by jhwshin
+#   Arch Installer by jhwshin
 # ================================================
 
-# print input commands
+# print all executed commands
 # set -x
 
-# interactive and verify install
+# interactive mode to verify each steps
 DEBUG_MODE=true
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-#       START OF CONFIG
+#   START CONFIG
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-# reflector --list-countries
+
+# LUKS container
+EFI_PARTITION="/dev/sda1"
+# BTRFS ROOT
+ROOT_PARTITION=""
+# ROOT_PARTITION="/dev/sda4"
+
+# $ reflector --list-countries
 MIRROR_REGIONS="AU,NZ"
 
-# less /etc/locale.gen
-# localectl list-locales
+# $ less /etc/locale.gen
 LOCALE_GEN=(
     "en_AU.UTF-8 UTF-8"
     "en_US.UTF-8 UTF-8"
 )
 LOCALE_SYSTEM="en_AU.UTF-8"
-# ls /usr/share/zoneinfo/<REGION>/<CITY>
+
+# $ ls /usr/share/zoneinfo/<REGION>/<CITY>
 TIMEZONE_REGION="Australia"
 TIMEZONE_CITY="Sydney"
+
 USERNAME="USER"
 HOSTNAME="ARCH"
 
-# choose one - intel | amd
+SWAPFILE_SIZE=17408
+
 CPU="intel"
-# choose any - intel | nvidia
 GPU=(
     "intel"
-    #"nvidia"
+    # "nvidia"
 )
-# choose one - refind | grub
 BOOTLOADER="refind"
+
+# intel
+# usbhub
+# luks
+# nvidia kms
+MODULES=(
+    i915
+    usbhid
+    xhci_hcd
+    keyboard
+    nvidia
+    nvidia_modeset
+    nvidia_uvm
+    nvidia_drm
+)
+
+HOOKS=(
+    base
+    systemd
+    keyboard
+    autodetect
+    sd-vconsole
+    block
+    sd-encrypt
+    filesystems
+    resume
+    fsck
+)
+
+SYSTEMD_STARTUPS=(
+    NetworkManager
+    bluetooth
+    reflector
+)
+
+# ------------------------------------------------
+#   Packages
+# ------------------------------------------------
 
 BASE_PACKAGES=(
     base
@@ -46,9 +91,12 @@ BASE_PACKAGES=(
     linux-firmware
     linux
     linux-headers
-    linux-lts                   # lts for backup
+    linux-lts
     linux-lts-headers
+    linux-zen
+    linux-zen-headers
     git
+    iwd
     nano
     nano-syntax-highlighting
     xdg-utils
@@ -58,15 +106,13 @@ BASE_PACKAGES=(
 DE=(
     i3
     dmenu
-    awesome
     xfce4
     xfce4-goodies
     gnome
     gnome-extra
-    # add more here...
 )
 
-ADDITIONAL_PACKAGES=(
+ADDITIONAL_PACKGES=(
     alsa-utils
     pavucontrol
     networkmanager
@@ -74,54 +120,21 @@ ADDITIONAL_PACKAGES=(
     bluez
     bluez-utils
     blueman
-    ntfs-3g
     openssh
-    lvm2
     reflector
-    # add more here...
 )
+
 AUR_PACKAGES=(
-    firefox          # web browser
-    # kitty          # terminal emulator
-    # barrier        # kvm
-    # deluge         # torrent
-    # syncthing      # network file sync
-    # samba          # network file
-    # vlc            # media player
-    # mpv            # media player
-    # visual-studio-code-bin     # code editor
+    firefox
+    kitty
+    barrier
+    deluge
+    syncthing
+    samba
+    vlc
+    mpv
+    visual-studio-code-bin
 )
-
-SYSTEMD_STARTUPS=(
-    NetworkManager
-    bluetooth
-    # sshd
-    # reflector
-    # reflector.timer
-    # add more here...
-)
-
-# non-systemd - (inc. all)
-# HOOKS="( base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 filesystems resume fsck )"
-
-# systemd - (inc. all)
-# HOOKS="( base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt lvm2 filesystems resume fsck )"
-
-#   LUKS        - encrypt | sd-encrypt
-#   LVM         - lvm2
-#   Hibernation - resume
-HOOKS="( base systemd autodetect keyboard sd-vconsole modconf block sd-encrypt lvm2 filesystems resume fsck )"
-
-# 0 = NO SWAPFILE
-SWAPFILE_SIZE=17408             # (MB) = 17 GB
-
-# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-#   END OF CONFIG
-# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-# ------------------------------------------------
-#   Package Bundles
-# ------------------------------------------------
 
 XORG_PACKAGES=(
     xorg
@@ -137,97 +150,190 @@ GPU_INTEL_PACKAGES=(
 )
 
 GPU_NVIDIA_PACKAGES=(
-    # nvidia
-    # nvidia-lts
     nvidia-dkms
     nvidia-utils
     lib32-nvidia-utils
     nvidia-settings
 )
 
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+#   END CONFIG
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+SCRIPT_NAME=$(basename "${0}")
+FULL_PATH=$(realpath "${0}")
+
 # ------------------------------------------------
-#   Helper Functions
+#   Pre-Chroot Functions
 # ------------------------------------------------
 
-debug_halt() {
-    if ${DEBUG_MODE}; then
-        echo ">> Press ANY key to continue."
-        read
-        clear
+setup_luks() {
+    echo ">> Setting up LUKS..."
+
+    # for safety root partition must be specified
+    if [[ ! -z ${ROOT_PARTITION} ]]; then
+
+        # format luks with optimized for ssd encryption
+        cryptsetup luksFormat \
+            --perf-no_read_workqueue \
+            --perf-no_write_workqueue \
+            --type luks2 \
+            --cipher aes-xts-plain64 \
+            --key-size 512 \
+            --iter-time 2000 \
+            --pbkdf argon2id \
+            --hash sha3-512 \
+            "${ROOT_PARTITION}"
+
+        # open container with persistent option to save paramaters
+        cryptsetup \
+            --allow-discards \
+            --perf-no_read_workqueue \
+            --perf-no_write_workqueue \
+            --persistent \
+            open "${ROOT_PARTITION}" crypt
+
+        # verify LUKS container
+        DEBUG_MODE && \
+            cryptsetup luksDump "${ROOT_PARTITION}" && \
+            read; clear
+
+    else
+        echo ">> ROOT PARTITION NOT SPECIFIED! EXITING..."
+        exit
     fi
 }
 
-# ------------------------------------------------
-#   Pre-chroot Functions
-# ------------------------------------------------
+setup_btrfs() {
+    echo ">> Setting up BTRFS..."
+
+    # format btrfs
+    mkfs.btrfs -L ROOT /dev/mapper/crypt
+
+    # mount ROOT container
+    mount /dev/mapper/crypt /mnt
+
+    # create btrfs subvolumes
+
+    # subvol to backup with snapshots
+    btrfs subvolume create /mnt/@
+    btrfs subvolume create /mnt/@home
+    btrfs subvolume create /mnt/@srv
+
+    # subvol to save snapshots
+    btrfs subvolume create /mnt/@snapshots
+
+    # subvol to most likely skip snapshots
+    btrfs subvolume create /mnt/@log
+    btrfs subvolume create /mnt/@cache
+    btrfs subvolume create /mnt/@tmp
+
+    # subvol to skip compression
+    btrfs subvolume create /mnt/@libvrt
+    btrfs subvolume create /mnt/@swap
+
+    # verify subvolumes
+    DEBUG_MODE && \
+        btrfs subvolume list /mnt && \
+        read; clear
+
+    umount /mnt
+
+    echo ">> Mounting partitions..."
+
+    mount -o noatime,nodiratime,compress=zstd:1,subvol=@ /dev/mapper/crypt          /mnt
+    mkdir /mnt/{boot,home,srv,.snapshots,tmp,.swapvol,btrfs}
+    mkdir -p /mnt/var/{log,cache,lib/libvirt/images}
+
+    mount -o noatime,nodiratime,compress=zstd:1,subvol=@home /dev/mapper/crypt      /mnt/home
+    mount -o noatime,nodiratime,compress=zstd:1,subvol=@srv /dev/mapper/crypt       /mnt/srv
+    mount -o noatime,nodiratime,compress=zstd:1,subvol=@snapshots /dev/mapper/crypt /mnt/.snapshots
+    mount -o noatime,nodiratime,compress=zstd:1,subvol=@log /dev/mapper/crypt       /mnt/var/log
+    mount -o noatime,nodiratime,compress=zstd:1,subvol=@cache /dev/mapper/crypt     /mnt/var/cache
+    mount -o noatime,nodiratime,compress=zstd:1,subvol=@tmp /dev/mapper/crypt       /mnt/tmp
+
+    mount -o noatime,nodiratime,compress=zstd:1,subvolid=5 /dev/mapper/crypt        /mnt/btrfs
+
+    # this may not work (nodatacow and datacow can't be in same file system)
+    # try instead set ($ chattr +C <DIR_OR_FILE>) instead
+    mount -o compress=no,subvol=@libvirt /dev/mapper/crypt                          /mnt/var/lib/libvirt/images
+    mount -o compress=no,subvol=@swap /dev/mapper/crypt                             /mnt/.swapvol
+
+    # disable CoW for certain folders
+    chattr +C /mnt/var/lib/libvirt/images
+
+    # mount EFI partition
+    mount "${EFI_PARTITION}" /mnt/boot
+
+    # verify mounts
+    DEBUG_MODE && \
+        findmnt /mnt && \
+        read; clear
+}
+
+setup_swapfile() {
+    echo ">> Setting up SWAP File..."
+
+    btrfs filesystem mkswapfile --size "${SWAPFILE_SIZE}" /mnt/.swapvol/swapfile
+    swapon /mnt/.swapvol/swapfile
+
+    # verify swap
+    DEBUG_MODE && \
+        swapon -s && \
+        read; clear
+}
 
 update_mirrorlist() {
-    echo ">> Updating Mirrorlist..."
+    echo ">> Updating mirrors..."
 
-    # create backup mirrorlist incase
+    # create backup mirrors just incase
     cp -v /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
 
-    # pacman -Syy archlinux-keyring --noconfirm
-    # pacman-key --refresh-keys
+    # if you get pgp errors
+    # $ pacman -Sy archlinux-keyring
+    # $ pacman-key --populate archlinux
+    # $ pacman-key --refresh-keys
 
-    # get fastest mirrors
-    reflector -c "${MIRROR_REGIONS}"  --latest 10 --number 10 --sort rate --save /etc/pacman.d/mirrorlist
+    # get fastest mirrors (slow)
+    # reflector \
+    #     --verbose \
+    #     --latest 200 \
+    #     --number 20 \
+    #     --protocol https \
+    #     --sort rate \
+    #     --save /etc/pacman.d/mirrorlist
 
-    # verify
-    cat /etc/pacman.d/mirrorlist
+    # get fastest mirrors (fast)
+    reflector \
+        --country "${MIRROR_REGIONS}" \
+        --latest 10 \
+        --number 10 \
+        --sort rate \
+        --save /etc/pacman.d/mirrorlist
 
-    debug_halt
+    # verify mirrors
+    DEBUG_MODE && \
+        cat /etc/pacman.d/mirrorlist && \
+        read; clear
 }
 
-pacstrap_arch() {
+install_arch_base() {
     echo ">> Installing Arch Base..."
 
-    # sometimes keys become invalid so it is best to download the latest to prevent errors
-    pacman -Syy archlinux-keyring --noconfirm
-
-    # install base packages to root mount
+    # install arch base packages
     pacstrap /mnt ${BASE_PACKAGES[*]} --noconfirm
 
-    # verify
-    cat /mnt/var/log/pacman.log | head -n 1
-
-    debug_halt
-}
-
-generate_fstab() {
-    echo ">> Starting Chroot..."
-
-    # use UUID for fstab
+    # generate /etc/fstab for automount
     genfstab -U /mnt > /mnt/etc/fstab
 
-    # verify
-    cat /mnt/etc/fstab
-
-    debug_halt
-}
-
-start_chroot() {
-    echo ">> Starting Chroot..."
-
-    SCRIPT_NAME=$(basename "${0}")
-    FULL_PATH=$(realpath "${0}")
-
-    # copy over this script to new root
-    cp -v ${FULL_PATH} /mnt/home
-
-    # chroot and execute this script in --chroot mode
-    arch-chroot /mnt sh /home/${SCRIPT_NAME} --chroot
-
-    # clean up copied script
-    rm /mnt/home/${SCRIPT_NAME}
-
-    echo ">> Leaving Chroot..."
-
-    debug_halt
+    # verify fstab
+    DEBUG_MODE && \
+        cat /mnt/etc/fstab && \
+        read; clear
 }
 
 # ------------------------------------------------
-#   chroot functions
+#   Chroot Functions
 # ------------------------------------------------
 
 set_locale() {
@@ -235,7 +341,7 @@ set_locale() {
 
     # select locales
     for locale in ${LOCALE_GEN[@]}; do
-        sed -i "/^#${locale}/ s/^#//" /etc/locale.gen
+        sed -i "s/^#${locale}/${locale}/" /etc/locale.gen
     done
 
     # generate locales
@@ -244,10 +350,10 @@ set_locale() {
     # set system language
     echo "LANG=${LOCALE_SYSTEM}" > /etc/locale.conf
 
-    # verify
-    cat /etc/locale.conf
-
-    debug_halt
+    # verify locale
+    DEBUG_MODE && \
+        localectl list-locales && \
+        read; clear
 }
 
 set_timezone() {
@@ -259,229 +365,131 @@ set_timezone() {
     # sync hardware clock
     hwclock --systohc -v
 
-    # verify
-    ls -l /etc/localtime
-
-    debug_halt
+    # verify timezone
+    DEBUG_MODE && \
+        ls -l /etc/localtime && \
+        read; clear
 }
 
 set_hosts() {
-    echo ">> Setting Hosts..."
+    echo ">> Setting up hosts..."
 
-    # loopback ip to localhost in ipv4 and ipv6
-    echo "127.0.0.1         localhost" >> /etc/hosts
-    echo "::1               localhost" >> /etc/hosts
+cat << EOF > /etc/hosts
+127.0.0.1                               localhost
+::1                                     localhost
+127.0.1.1       ${HOSTNAME}.localdomain ${HOSTNAME}
+EOF
 
-    # verify
-    cat /etc/hosts
-
-    debug_halt
+    # verify hosts
+    DEBUG_MODE && \
+        cat /etc/hosts && \
+        read; clear
 }
 
 set_hostname() {
-    echo ">> Setting Hostname..."
+    echo ">> Setting up hostname..."
 
-    echo ${HOSTNAME} > /etc/hostname
+    echo "${HOSTNAME}" > /etc/hostname
 
-    # verify
-    cat /etc/hostname
-
-    debug_halt
+    # verify hostname
+    DEBUG_MODE && \
+        cat /etc/hostname && \
+        read; clear
 }
 
 set_user() {
-    echo ">> Setting Up Users..."
+    echo ">> Adding users..."
 
-    # create user and add to group wheel
-    useradd -m ${USERNAME} -G wheel
+    # add users with zsh as shell
+    useradd -m -G wheel -s /usr/bin/zsh ${USERNAME}
 
     # add user to sudoers
     EDITOR="sed -i '/^# %wheel ALL=(ALL:ALL) ALL/ s/^# //'" visudo
 
     # password for user
-    echo ">> Enter password for ${USERNAME}:"
     passwd ${USERNAME}
 
     # password for root
-    echo ">> Enter password for root:"
     passwd
 
-    # verify
-    cat /etc/sudoers
-    cat /etc/passwd
-
-    debug_halt
+    # verify users
+    DEBUG_MODE && \
+        cat /etc/sudoers && \
+        cat /etc/passwd && \
+        read; clear
 }
 
 edit_pacman() {
-    echo ">> Editing pacman.conf..."
+    echo ">> Editting pacman.conf ..."
 
-    # change misc options in pacman
-    sed -i "/^#UseSyslog/ s/^#//" /etc/pacman.conf
-    sed -i "/^#Color/ s/^#//" /etc/pacman.conf
-    sed -i "/^#VerbosePkgLists/ s/^#//" /etc/pacman.conf
+    sed -i "s/^#UseSyslog/UseSyslog/" /etc/pacman.conf
+    sed -i "s/#CheckSpace/CheckSpace/" etc/pacman.conf
+    sed -i "s/#VerbosePkgLists/VerbosePkgLists/" etc/pacman.conf
     sed -i "/^#ParallelDownloads/ s/^#//" /etc/pacman.conf
 
-    # add 32-bit source
-    sed -i '/^#\[multilib\].*/,+1 s/^#//' /etc/pacman.conf
-
-    # refresh pacman mirrors
-    pacman -Syy
-
-    # verify
-    cat /etc/pacman.conf | grep "# Misc options" -A 6
-    cat /etc/pacman.conf | grep "\[multilib\]" -A 1
-
-    debug_halt
+    # verify new pacman configs
+    DEBUG_MODE && \
+        cat /etc/pacman.conf | grep "# Misc options" -A 6 && \
+        cat /etc/pacman.conf | grep "\[multilib\]" -A 1 && \
+        read; clear
 }
+
 
 install_cpu_microcode() {
     echo ">> Installing CPU Microcode..."
 
     case ${CPU} in
         "intel")
+            echo ">> Installing Intel CPU drivers..."
+
             pacman -S intel-ucode --noconfirm
         ;;
     esac
-
-    debug_halt
 }
 
 install_display_server() {
     echo ">> Installing Display Server..."
 
     pacman -S ${XORG_PACKAGES[*]} --noconfirm
-
-    debug_halt
 }
 
 install_gpu_drivers() {
-    echo ">> Installing GPU Drivers..."
+    echo ">> Installing GPU drivers..."
 
     for gpu in ${GPU[@]}; do
         case ${gpu} in
             "intel")
+                echo ">> Installing Intel GPU drivers..."
+
                 pacman -S ${GPU_INTEL_PACKAGES[*]} --noconfirm
+
+cat << EOF > /etc/X11/xorg.conf.d/20-intel.conf
+# prevent screen tearing for intel
+Section "Device"
+    Identifier "Intel Graphics"
+    Driver "intel"
+    Option "TearFree" "true"
+EndSection
+EOF
             ;;
+
             "nvidia")
+                echo ">> Installing Nvidia GPU drivers..."
                 pacman -S ${GPU_NVIDIA_PACKAGES[*]} --noconfirm
 
                 # generate nvidia xorg
                 nvidia-xconfig
 
-                # create pacman hook to rebuild kernel when nvidia is updated
-                mkdir /etc/pacman.d/hooks
-                nvidia_systemd="[Trigger]
-Operation=Install
-Operation=Upgrade
-Operation=Remove
-Type=Package
-Target=nvidia
-Target=nvidia-dkms
-Target=nvidia-utils
-Target=lib32-nvidia-utils
-Target=linux
-Target=linux-lts
-# add more kernels here...
-
-[Action]
-Description=Update Nvidia module in initcpio
-Depends=mkinitcpio
-When=PostTransaction
-NeedsTargets
-Exec=/bin/sh -c 'while read -r trg; do case $trg in linux) exit 0; esac; done; /usr/bin/mkinitcpio -P'
-"
-                echo "${nvidia_systemd}" > /etc/pacman.d/hooks/nvidia.hooks
-                #systemctl enable nvidia.hooks
-
-                # enable nvidia powersaving for suspend / hibernate
-                systemctl enable nvidia-hibernate
+                # enable power saving
                 systemctl enable nvidia-suspend
-                systemctl enable nvidia-resume
+                systemctl enable nvidia-hibernate
             ;;
+
         esac
-
-        # fix?
-        sleep 5
     done
-
-    debug_halt
 }
 
-setup_swapfile() {
-
-    if [[ ${SWAPFILE_SIZE} -gt 0 ]]; then
-        echo ">> Creating Swapfile..."
-
-        # create new swapfile given size and make sure its zeroed out
-        dd if=/dev/zero of=/swapfile bs=1M count=${SWAPFILE_SIZE} status=progress
-
-        # change permission
-        chmod 600 /swapfile
-
-        # make and turn on swap
-        mkswap /swapfile
-        swapon /swapfile
-
-        # add swapfile to fstab
-        echo "/swapfile     none    swap    defaults    0   0" >> /etc/fstab
-
-        debug_halt
-    else
-        echo ">> Skipping Swapfile..."
-        debug_halt
-    fi
-}
-
-install_bootloader() {
-    echo ">> Installing Bootloader..."
-
-    root_part=$(mount | grep -oP '(?<=^)/dev/.*(?= on / )')
-    uuid=$(lsblk $root_part -n -o UUID)
-
-    # add swapfile resume parameter
-    resume_parameters=""
-    if [[ ${SWAPFILE_SIZE} -gt 0 ]]; then
-
-        # swap offset location required for /swapfile
-        swap_offset=$(filefrag -v /swapfile | sed -n 4p | awk '{print $4}' | grep -o [0-9]*)
-
-        # final kernel parameter to add to bootloader
-        resume_parameters="resume=${root_part} resume_offset=${swap_offset}"
-    fi
-
-    case ${BOOTLOADER} in
-        "refind")
-            pacman -S refind --noconfirm
-
-            # install refind to /boot
-            refind-install
-
-            # refind entries (bug fix)
-            echo "\"Boot with standard options\" \"root=UUID=${uuid} rw ${resume_parameters}\"" > /boot/refind_linux.conf
-
-            # verify
-            cat /boot/refind_linux.conf
-        ;;
-        "grub")
-
-            pacman -S grub efibootmgr os-prober --noconfirm
-
-            # install refind to /boot
-            grub-install
-
-            # add resume to grub entry
-            sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=/& ${resume_parameters}/" /etc/default/grub
-
-            # generate grub configs
-            grub-mkconfig -o /boot/grub/grub.cfg
-        ;;
-    esac
-
-    debug_halt
-}
-
-install_desktop_env() {
+instalL_desktop_env() {
     echo ">> Installing Desktop Environment..."
 
     pacman -S ${DE[*]} --noconfirm
@@ -500,27 +508,22 @@ install_desktop_env() {
     # change owner of .xinitrc
     chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.xinitrc
 
-    # verify
-    cat /home/${USERNAME}/.xinitrc
-
-    debug_halt
+    # verify .xinitrc
+    DEBUG_MODE && \
+        cat /home/${USERNAME}/.xinitrc && \
+        read; clear
 }
 
 install_basic_packages() {
     echo ">> Installing Basic Packages..."
 
     pacman -S ${ADDITIONAL_PACKAGES[*]} --noconfirm
-
-    systemctl enable ${SYSTEMD_STARTUPS[*]}
-
-    debug_halt
 }
 
 install_aur() {
     echo ">> Installing AUR..."
 
-    # leave root
-    su - ${USERNAME} << EOF
+su - ${USERNAME} << EOF
 cd && git clone https://aur.archlinux.org/yay
 cd yay && makepkg -si --noconfirm
 cd .. && rm -rf yay
@@ -528,50 +531,254 @@ exit
 EOF
 
     # install AUR packages
-    yay -Syy ${AUR_PACKAGES[*]} --noconfirm
+    yay -Sy ${AUR_PACKAGES[*]} --noconfirm
+}
 
-    debug_halt
+install_bootloader() {
+    echo ">> Installing Bootloader..."
+
+    case ${BOOTLOADER} in
+        "refind")
+            echo ">> Installing rEFIND Bootloader..."
+
+            yay -S \
+                refind \
+                shim-signed \
+                sbsigntools \
+                pamac-aur \
+                --noconfirm
+
+            # create rEFIND keys and cert for secure boot
+            refind-install --shim /usr/share/shim-signed/shimx64.efi --localkeys
+
+            # sign with MOK
+            sbsign --key /etc/refind.d/keys/refind_local.key --cert /etc/refind.d/keys/refind_local.crt --output /boot/vmlinuz-linux /boot/vmlinuz-linux
+            # sign other kernels?
+
+            CRYPT_UUID=$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')
+            RESUME_OFFSET=$(btrfs inspect-internal map-swapfile -r /.swapvol/swapfile)
+
+# TODO
+cat << EOF >> /boot/EFI/refind/refind.conf
+
+# Global Settings
+timeout 10                          #   [-1, 0, 0+] (skip, no timeout, x seconds)
+log_level 0                         #   [0-4]
+#enable_touch
+#enable_mouse
+#dont_scan_volumes "<LABEL>"        #   Prevent duplicate non-custom Linux entries using <LABEL> use `e2label` to label partition
+                                    #   or for LUKS `cryptsetup config /dev/<sdXY> --label <LABEL>``
+default_selection +                 #   Microsoft, Arch, + (most recently boot)
+resolution max
+
+# UI Settings
+# hideui banner, label, singleuser, arrows, hints, editor, badges
+hideui singleuser, hints, arrows, label, badges
+# shell, memtest, mok_tool, hidden_tags, shutdown, reboot, firmware
+showtools mok_tool, hidden_tags, reboot, shutdown, firmware
+
+menuentry "Arch Linux" {
+    icon     icon /EFI/refind/icons/os_arch.png
+    volume   "ROOT"
+    loader   /vmlinuz-linux
+    initrd   /initramfs-linux.img
+    options  "rd.luks.name=${CRYPT_UUID}=crypt root=/dev/mapper/crypt rootflags=subvol=@ resume=/dev/mapper/crypt resume_offset=${RESUME_OFFSET} rw initrd=/intel-ucode.img"
+    submenuentry "Boot using fallback initramfs" {
+        loader          /vmlinuz-linux
+        initrd          /initramfs-linux-fallback.img
+    }
+    submenuentry "Boot to terminal" {
+        add_options "systemd.unit=multi-user.target"
+    }
+    submenuentry "Linux-lts" {
+        loader          /vmlinuz-linux-lts
+        initrd          /initramfs-linux-lts.img
+    }
+    submenuentry "Boot using Linux-lts fallback initramfs" {
+        loader          /vmlinuz-linux-lts
+        initrd          /initramfs-linux-lts-fallback.img
+    }
+    submenuentry "Linux-zen" {
+        loader          /vmlinuz-linux-zen
+        initrd          /initramfs-linux-zen.img
+    }
+    submenuentry "Boot using Linux-zen fallback initramfs" {
+        loader          /vmlinuz-linux-zen
+        initrd          /initramfs-linux-zen-fallback.img
+    }
+}
+EOF
+
+            # verify refind configs
+            DEBUG_MODE && \
+                cat /boot/EFI/refind/refind.conf && \
+                read; clear
+        ;;
+    esac
+}
+
+misc_configs() {
+    echo ">> Setting up Reflector..."
+
+cat << EOF > /etc/xdg/reflector/reflector.conf
+--country "${MIRROR_REGIONS}" \
+--latest 10 \
+--number 10 \
+--sort rate \
+--save /etc/pacman.d/mirrorlist
+EOF
+
+    echo ">> Pruning .snapshots in /etc/updatedb.conf..."
+
+    # prevent snapshot slowdowns
+    echo 'PRUNENAMES = ".snapshots"' >> /etc/updatedb.conf
+}
+
+setup_hooks() {
+    echo ">> Setting up Systemd Hooks..."
+
+    mkdir /etc/pacman.d/hooks
+
+# sign kernel initramfs after every rebuild update
+cat << EOF > /etc/pacman.d/hooks/999-sign_kernel_for_secureboot.hook
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = linux
+Target = linux-lts
+Target = linux-hardened
+Target = linux-zen
+
+[Action]
+Description = Signing kernel with Machine Owner Key for Secure Boot
+When = PostTransaction
+Exec = /usr/bin/find /boot/ -maxdepth 1 -name 'vmlinuz-*' -exec /usr/bin/sh -c '/usr/bin/sbsign --key /etc/refind.d/keys/refind_local.key --cert /etc/refind.d/keys/refind_local.crt --output {} {}';
+Depends = sbsigntools
+Depends = findutils
+Depends = grep
+EOF
+
+# sign after every rEFIND update
+cat << EOF > /etc/pacman.d/hooks/refind.hook
+[Trigger]
+Operation=Upgrade
+Type=Package
+Target=refind
+
+[Action]
+Description = Updating rEFInd on ESP
+When=PostTransaction
+Exec=/usr/bin/refind-install --shim /usr/share/shim-signed/shimx64.efi --localkeys
+EOF
+
+# rebuild initramfs hook after every nvidia update
+cat << EOF > /etc/pacman.d/hooks/nvidia.hooks
+[Trigger]
+Operation=Install
+Operation=Upgrade
+Operation=Remove
+Type=Package
+Target=nvidia
+Target=nvidia-lts
+Target=nvidia-dkms
+Target=nvidia-utils
+Target=lib32-nvidia-utils
+Target = linux
+Target = linux-lts
+Target = linux-hardened
+Target = linux-zen
+
+[Action]
+Description=Update Nvidia module in initcpio
+Depends=mkinitcpio
+When=PostTransaction
+NeedsTargets
+Exec=/bin/sh -c 'while read -r trg; do case $trg in linux) exit 0; esac; done; /usr/bin/mkinitcpio -P'
+EOF
+
+# refresh cache after zsh update
+cat << EOF > /etc/pacman.d/hooks/zsh.hook
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Type = Path
+Target = usr/bin/*
+
+[Action]
+Depends = zsh
+When = PostTransaction
+Exec = /usr/bin/install -Dm644 /dev/null /var/cache/zsh/pacman
+EOF
+
+    # verify systemd hooks
+    DEBUG_MODE && \
+        ls -l /etc/pacman.d/hooks && \
+        read; clear
+
+}
+
+enable_systemd_units() {
+    echo ">> Enabling Systemd Startups..."
+
+    systemctl enable ${SYSTEMD_STARTUPS[*]}
 }
 
 rebuild_initramfs() {
     echo ">> Rebuilding Initramfs..."
 
-    # replace HOOKS array - tofix?
+    # replace MODULES array
+    sed -i "s/^MODULES=.*/MODULES=${MODULES}/" /etc/mkinitcpio.conf
+
+    # replace HOOKS array
     sed -i "s/^HOOKS=.*/HOOKS=${HOOKS}/" /etc/mkinitcpio.conf
 
     # rebuild
     mkinitcpio -P
 
-    # verify
-    cat /etc/mkinitcpio.conf | grep '^HOOKS=.*'
-
-    debug_halt
+    # verify modules and hooks
+    DEBUG_MODE && \
+        cat /etc/mkinitcpio.conf | grep '^MODULES=.*' && \
+        cat /etc/mkinitcpio.conf | grep '^HOOKS=.*' && \
+        read; clear
 }
 
 # ------------------------------------------------
-#   Main Function
+#   Main
 # ------------------------------------------------
 
-main() {
+main () {
 
-    # pre-chroot functions
+    # pre-chroot
     if [[ $# -eq 0 ]]; then
 
         echo ">> Starting Arch Install..."
 
+        setup_luks
+        setup_btrfs
+        setup_swapfile
         update_mirrorlist
-        pacstrap_arch
-        generate_fstab
-        start_chroot
+        install_arch_base
+
+        # copy over this script to /mnt
+        cp -v ${FULL_PATH} /mnt/home
+
+        # chroot and execute this script in --chroot
+        arch-chroot /mnt sh /home/${SCRIPT_NAME} --chroot
+
+        # clean up copied script
+        rm /mnt/home/${SCRIPT_NAME}
 
         exit
 
         echo ">> Arch Install Finished!"
 
-    # chroot functions
-    elif [[ ${1} == "--chroot" ]]; then
+    # chroot
+    elif [[ ${1} == "-chroot" ]]; then
 
-        # setting basic system configurations
+        echo ">> Starting chroot..."
+
         set_locale
         set_timezone
         set_hosts
@@ -579,32 +786,23 @@ main() {
         set_user
         edit_pacman
 
-        # setting up drivers, packages, environment
         install_cpu_microcode
         install_display_server
         install_gpu_drivers
-        setup_swapfile
-        install_bootloader
-        install_desktop_env
+        instalL_desktop_env
         install_basic_packages
         install_aur
+        install_bootloader
+
+        misc_configs
+        setup_hooks
+        enable_systemd_units
 
         rebuild_initramfs
+
+        echo ">> Finished chroot!"
 
     fi
 }
 
-# ------------------------------------------------
-
-# need to pass "--chroot parameter" if specified
 main $@
-
-# ------------------------------------------------
-
-# refind_linux.conf - options for luks boot lvm etc..
-# glxinfo?
-# ntp?
-# dualboot timefix
-# timedatectl set-local-rtc 1 --adjust-system-clock
-# hwclock --systohc --localtime
-# gdm vs lightdm?
