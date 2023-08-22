@@ -229,7 +229,7 @@ setup_btrfs() {
     btrfs subvolume create /mnt/@tmp
 
     # subvol to skip compression
-    btrfs subvolume create /mnt/@libvrt
+    btrfs subvolume create /mnt/@libvirt
     btrfs subvolume create /mnt/@swap
 
     # verify subvolumes
@@ -267,14 +267,14 @@ setup_btrfs() {
 
     # verify mounts
     ${DEBUG_MODE} && \
-        findmnt /mnt && \
+        findmnt -a | grep /mnt && \
         read; clear
 }
 
 setup_swapfile() {
     echo ">> Setting up SWAP File..."
 
-    btrfs filesystem mkswapfile --size "${SWAPFILE_SIZE}" /mnt/.swapvol/swapfile
+    btrfs filesystem mkswapfile --size "${SWAPFILE_SIZE}"M /mnt/.swapvol/swapfile
     swapon /mnt/.swapvol/swapfile
 
     # verify swap
@@ -776,7 +776,7 @@ main () {
         echo ">> Arch Install Finished!"
 
     # chroot
-    elif [[ ${1} == "-chroot" ]]; then
+    elif [[ ${1} == "--chroot" ]]; then
 
         echo ">> Starting chroot..."
 
