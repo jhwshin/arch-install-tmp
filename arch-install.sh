@@ -194,7 +194,7 @@ setup_luks() {
             open "${ROOT_PARTITION}" crypt
 
         # verify LUKS container
-        DEBUG_MODE && \
+        ${DEBUG_MODE} && \
             cryptsetup luksDump "${ROOT_PARTITION}" && \
             read; clear
 
@@ -233,7 +233,7 @@ setup_btrfs() {
     btrfs subvolume create /mnt/@swap
 
     # verify subvolumes
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         btrfs subvolume list /mnt && \
         read; clear
 
@@ -266,7 +266,7 @@ setup_btrfs() {
     mount "${EFI_PARTITION}" /mnt/boot
 
     # verify mounts
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         findmnt /mnt && \
         read; clear
 }
@@ -278,7 +278,7 @@ setup_swapfile() {
     swapon /mnt/.swapvol/swapfile
 
     # verify swap
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         swapon -s && \
         read; clear
 }
@@ -312,7 +312,7 @@ update_mirrorlist() {
         --save /etc/pacman.d/mirrorlist
 
     # verify mirrors
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         cat /etc/pacman.d/mirrorlist && \
         read; clear
 }
@@ -327,7 +327,7 @@ install_arch_base() {
     genfstab -U /mnt > /mnt/etc/fstab
 
     # verify fstab
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         cat /mnt/etc/fstab && \
         read; clear
 }
@@ -351,7 +351,7 @@ set_locale() {
     echo "LANG=${LOCALE_SYSTEM}" > /etc/locale.conf
 
     # verify locale
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         localectl list-locales && \
         read; clear
 }
@@ -366,7 +366,7 @@ set_timezone() {
     hwclock --systohc -v
 
     # verify timezone
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         ls -l /etc/localtime && \
         read; clear
 }
@@ -381,7 +381,7 @@ cat << EOF > /etc/hosts
 EOF
 
     # verify hosts
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         cat /etc/hosts && \
         read; clear
 }
@@ -392,7 +392,7 @@ set_hostname() {
     echo "${HOSTNAME}" > /etc/hostname
 
     # verify hostname
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         cat /etc/hostname && \
         read; clear
 }
@@ -413,7 +413,7 @@ set_user() {
     passwd
 
     # verify users
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         cat /etc/sudoers && \
         cat /etc/passwd && \
         read; clear
@@ -428,7 +428,7 @@ edit_pacman() {
     sed -i "/^#ParallelDownloads/ s/^#//" /etc/pacman.conf
 
     # verify new pacman configs
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         cat /etc/pacman.conf | grep "# Misc options" -A 6 && \
         cat /etc/pacman.conf | grep "\[multilib\]" -A 1 && \
         read; clear
@@ -509,7 +509,7 @@ instalL_desktop_env() {
     chown ${USERNAME}:${USERNAME} /home/${USERNAME}/.xinitrc
 
     # verify .xinitrc
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         cat /home/${USERNAME}/.xinitrc && \
         read; clear
 }
@@ -610,7 +610,7 @@ menuentry "Arch Linux" {
 EOF
 
             # verify refind configs
-            DEBUG_MODE && \
+            ${DEBUG_MODE} && \
                 cat /boot/EFI/refind/refind.conf && \
                 read; clear
         ;;
@@ -713,7 +713,7 @@ Exec = /usr/bin/install -Dm644 /dev/null /var/cache/zsh/pacman
 EOF
 
     # verify systemd hooks
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         ls -l /etc/pacman.d/hooks && \
         read; clear
 
@@ -738,7 +738,7 @@ rebuild_initramfs() {
     mkinitcpio -P
 
     # verify modules and hooks
-    DEBUG_MODE && \
+    ${DEBUG_MODE} && \
         cat /etc/mkinitcpio.conf | grep '^MODULES=.*' && \
         cat /etc/mkinitcpio.conf | grep '^HOOKS=.*' && \
         read; clear
