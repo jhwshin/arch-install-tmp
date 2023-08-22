@@ -101,6 +101,7 @@ BASE_PACKAGES=(
     nano-syntax-highlighting
     xdg-utils
     xdg-user-dirs
+    zsh
 )
 
 DE=(
@@ -424,9 +425,16 @@ edit_pacman() {
     echo ">> Editting pacman.conf ..."
 
     sed -i "s/^#UseSyslog/UseSyslog/" /etc/pacman.conf
+    sed -i "s/^#Color/Color/" /etc/pacman.conf
     sed -i "s/#CheckSpace/CheckSpace/" etc/pacman.conf
     sed -i "s/#VerbosePkgLists/VerbosePkgLists/" etc/pacman.conf
     sed -i "/^#ParallelDownloads/ s/^#//" /etc/pacman.conf
+
+    # add 32-bit mirrors
+    $ sed -i '/^#\[multilib\].*/,+1 s/^#//' /etc/pacman.conf
+
+    # refresh pacman mirrors
+    $ pacman -Sy
 
     # verify new pacman configs
     ${DEBUG_MODE} && \
@@ -490,7 +498,7 @@ EOF
     done
 }
 
-instalL_desktop_env() {
+install_desktop_env() {
     echo ">> Installing Desktop Environment..."
 
     pacman -S ${DE[*]} --noconfirm
