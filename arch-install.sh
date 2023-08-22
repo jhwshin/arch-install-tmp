@@ -291,6 +291,7 @@ update_mirrorlist() {
 
     # if you get pgp errors
     # $ pacman -Sy archlinux-keyring
+    # $ pacman-key --init
     # $ pacman-key --populate archlinux
     # $ pacman-key --refresh-keys
 
