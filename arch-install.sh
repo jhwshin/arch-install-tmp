@@ -202,6 +202,7 @@ setup_luks() {
         # verify LUKS container
         ${DEBUG_MODE} && \
             cryptsetup luksDump "${ROOT_PARTITION}" && \
+            printf "\nPress Enter to continue...\n\n" && \
             read; clear
 
     else
@@ -241,6 +242,7 @@ setup_btrfs() {
     # verify subvolumes
     ${DEBUG_MODE} && \
         btrfs subvolume list /mnt && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 
     umount /mnt
@@ -274,6 +276,7 @@ setup_btrfs() {
     # verify mounts
     ${DEBUG_MODE} && \
         findmnt -a | grep /mnt && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -286,6 +289,7 @@ setup_swapfile() {
     # verify swap
     ${DEBUG_MODE} && \
         swapon -s && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -321,6 +325,7 @@ update_mirrorlist() {
     # verify mirrors
     ${DEBUG_MODE} && \
         cat /etc/pacman.d/mirrorlist && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -336,6 +341,7 @@ install_arch_base() {
     # verify fstab
     ${DEBUG_MODE} && \
         cat /mnt/etc/fstab && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -366,6 +372,7 @@ EOF
     # verify locale
     ${DEBUG_MODE} && \
         localectl list-locales && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -381,6 +388,7 @@ set_timezone() {
     # verify timezone
     ${DEBUG_MODE} && \
         ls -l /etc/localtime && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -396,6 +404,7 @@ EOF
     # verify hosts
     ${DEBUG_MODE} && \
         cat /etc/hosts && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -407,6 +416,7 @@ set_hostname() {
     # verify hostname
     ${DEBUG_MODE} && \
         cat /etc/hostname && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -429,6 +439,7 @@ set_user() {
     ${DEBUG_MODE} && \
         cat /etc/sudoers && \
         cat /etc/passwd && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -451,6 +462,7 @@ edit_pacman() {
     ${DEBUG_MODE} && \
         cat /etc/pacman.conf | grep "# Misc options" -A 6 && \
         cat /etc/pacman.conf | grep "\[multilib\]" -A 1 && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -469,6 +481,7 @@ install_cpu_microcode() {
     done
 
     ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -478,6 +491,7 @@ install_display_server() {
     pacman -S ${XORG_PACKAGES[*]} --noconfirm
 
     ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -517,6 +531,7 @@ EOF
     done
 
     ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -542,6 +557,7 @@ install_desktop_env() {
     # verify .xinitrc
     ${DEBUG_MODE} && \
         cat /home/${USERNAME}/.xinitrc && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -551,6 +567,7 @@ install_basic_packages() {
     pacman -S ${ADDITIONAL_PACKAGES[*]} --noconfirm
 
     ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -568,6 +585,7 @@ EOF
     yay -Sy ${AUR_PACKAGES[*]} --noconfirm
 
     ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -637,6 +655,7 @@ EOF
             # verify refind configs
             ${DEBUG_MODE} && \
                 cat /boot/EFI/refind/refind.conf && \
+                printf "\nPress Enter to continue...\n\n" && \
                 read; clear
         ;;
     esac
@@ -660,6 +679,7 @@ EOF
     echo 'PRUNENAMES = ".snapshots"' >> /etc/updatedb.conf
 
     ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -744,6 +764,7 @@ EOF
     # verify systemd hooks
     ${DEBUG_MODE} && \
         ls -l /etc/pacman.d/hooks && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 
 }
@@ -754,6 +775,7 @@ enable_systemd_units() {
     systemctl enable ${SYSTEMD_STARTUPS[*]}
 
     ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
@@ -773,6 +795,7 @@ rebuild_initramfs() {
     ${DEBUG_MODE} && \
         cat /etc/mkinitcpio.conf | grep '^MODULES=.*' && \
         cat /etc/mkinitcpio.conf | grep '^HOOKS=.*' && \
+        printf "\nPress Enter to continue...\n\n" && \
         read; clear
 }
 
