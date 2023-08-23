@@ -775,10 +775,10 @@ rebuild_initramfs() {
     echo ">> Rebuilding Initramfs..."
 
     # replace MODULES array
-    sed -i "s/^MODULES=.*/MODULES=(${MODULES[*]})/" /etc/mkinitcpio.conf
+    sed -i "s/^MODULES=.*/MODULES=( ${MODULES[*]} )/" /etc/mkinitcpio.conf
 
     # replace HOOKS array
-    sed -i "s/^HOOKS=.*/HOOKS=(${HOOKS[*]})/" /etc/mkinitcpio.conf
+    sed -i "s/^HOOKS=.*/HOOKS=( ${HOOKS[*]} )/" /etc/mkinitcpio.conf
 
     # rebuild
     mkinitcpio -P
