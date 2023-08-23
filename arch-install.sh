@@ -355,6 +355,12 @@ set_locale() {
     # set system language
     echo "LANG=${LOCALE_SYSTEM}" > /etc/locale.conf
 
+    # set keymap
+cat > /etc/vconsole.conf << EOF
+KEYMAP=us
+FONT=Lat2-Terminus16
+EOF
+
     # verify locale
     ${DEBUG_MODE} && \
         localectl list-locales && \
