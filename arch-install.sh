@@ -187,6 +187,7 @@ setup_luks() {
             --iter-time 2000 \
             --pbkdf argon2id \
             --hash sha3-512 \
+            --verbose \
             "${ROOT_PARTITION}"
 
         # open container with persistent option to save paramaters
@@ -195,6 +196,7 @@ setup_luks() {
             --perf-no_read_workqueue \
             --perf-no_write_workqueue \
             --persistent \
+            --verbose \
             open "${ROOT_PARTITION}" crypt
 
         # verify LUKS container
