@@ -269,6 +269,7 @@ setup_btrfs() {
 
     # disable CoW for certain folders
     chattr +C /mnt/var/lib/libvirt/images
+    chattr +C /mnt/.swapvol
 
     # mount EFI partition
     mount "${EFI_PARTITION}" /mnt/boot
