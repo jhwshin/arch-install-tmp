@@ -468,6 +468,45 @@ edit_pacman() {
         read; clear
 }
 
+refind_fix() {
+    CRYPT_UUID="$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')"
+    RESUME_OFFSET="$(btrfs inspect-internal map-swapfile -r /mnt/.swapvol/swapfile)"
+
+cat << EOF >> /mnt/boot/EFI/refind/refind.conf
+menuentry "Arch Linux" {
+    icon     /EFI/refind/icons/os_arch.png
+    volume   "CRYPT_ROOT"
+    loader   /vmlinuz-linux
+    initrd   /initramfs-linux.img
+    options  "rd.luks.name=${CRYPT_UUID}=crypt root=/dev/mapper/crypt rootflags=subvol=@ resume=/dev/mapper/crypt resume_offset=${RESUME_OFFSET} rw initrd=/intel-ucode.img initrd=/initramfs-linux.img"
+    
+    submenuentry "Linux fallback initramfs" {
+        loader          /vmlinuz-linux
+        initrd          /initramfs-linux-fallback.img
+    }
+    submenuentry "Boot to terminal" {
+        add_options "systemd.unit=multi-user.target"
+    }
+    submenuentry "Linux-lts" {
+        loader          /vmlinuz-linux-lts
+        initrd          /initramfs-linux-lts.img
+    }
+    submenuentry "Linux-lts fallback initramfs" {
+        loader          /vmlinuz-linux-lts
+        initrd          /initramfs-linux-lts-fallback.img
+    }
+    submenuentry "Linux-zen" {
+        loader          /vmlinuz-linux-zen
+        initrd          /initramfs-linux-zen.img
+    }
+    submenuentry "Linux-zen fallback initramfs" {
+        loader          /vmlinuz-linux-zen
+        initrd          /initramfs-linux-zen-fallback.img
+    }
+}
+EOF
+
+}
 
 install_cpu_microcode() {
     echo ">> Installing CPU Microcode..."
@@ -789,6 +828,12 @@ rebuild_initramfs() {
         read; clear
 }
 
+fstab_fix() {
+    sed -i '/UUID=(.*) +\/var\/lib\/libvirt\/images +btrfs +.*subvolid=(.*),.*/UUID=\1 \/var\/lib\/libvirt\/images btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@libvirt 0 0/' /etc/fstab
+
+    sed -i '/UUID=(.*) +\/.swapvol +btrfs +.*subvolid=(.*),.*/UUID=\1 \/.swapvol btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@swap 0 0/' /etc/fstab
+}
+
 # ------------------------------------------------
 #   Main
 # ------------------------------------------------
@@ -814,6 +859,8 @@ main () {
 
         # clean up copied script
         rm /mnt/home/${SCRIPT_NAME}
+
+        refind_fix
 
         exit
 
@@ -844,6 +891,7 @@ main () {
         enable_systemd_units
 
         rebuild_initramfs
+        fstab_fix
 
         echo ">> Finished chroot!"
 
