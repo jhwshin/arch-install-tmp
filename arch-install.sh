@@ -614,7 +614,7 @@ menuentry "Arch Linux" {
     volume   "CRYPT_ROOT"
     loader   /vmlinuz-linux
     initrd   /initramfs-linux.img
-    options  "rd.luks.name=${CRYPT_UUID}=crypt root=/dev/mapper/crypt rootflags=subvol=@ resume=/dev/mapper/crypt resume_offset=${RESUME_OFFSET} rw initrd=/intel-ucode.img"
+    options  "rd.luks.name=${CRYPT_UUID}=crypt root=/dev/mapper/crypt rootflags=subvol=@ resume=/dev/mapper/crypt resume_offset=${RESUME_OFFSET} rw initrd=/intel-ucode.img initrd=/initramfs-linux.img"
     submenuentry "Boot using fallback initramfs" {
         loader          /vmlinuz-linux
         initrd          /initramfs-linux-fallback.img
