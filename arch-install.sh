@@ -609,7 +609,7 @@ install_bootloader() {
 cat << EOF >> /boot/EFI/refind/refind.conf
 
 menuentry "Arch Linux" {
-    icon     icon /EFI/refind/icons/os_arch.png
+    icon     /EFI/refind/icons/os_arch.png
     volume   "ROOT"
     loader   /vmlinuz-linux
     initrd   /initramfs-linux.img
