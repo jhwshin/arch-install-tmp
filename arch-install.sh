@@ -577,43 +577,15 @@ install_bootloader() {
         "refind")
             echo ">> Installing rEFIND Bootloader..."
 
-            yay -S \
-                refind \
-                shim-signed \
-                sbsigntools \
-                pamac-aur \
-                --noconfirm
+            pacman -S refind --noconfirm
 
-            ${DEBUG_MODE} && \
-                read; clear
-
-            # create rEFIND keys and cert for secure boot
-            refind-install --shim /usr/share/shim-signed/shimx64.efi --localkeys
-
-            # sign with MOK
-            sbsign --key /etc/refind.d/keys/refind_local.key --cert /etc/refind.d/keys/refind_local.crt --output /boot/vmlinuz-linux /boot/vmlinuz-linux
+            refind-install
 
             CRYPT_UUID=$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')
             RESUME_OFFSET=$(btrfs inspect-internal map-swapfile -r /.swapvol/swapfile)
 
 # TODO
 cat << EOF >> /boot/EFI/refind/refind.conf
-
-# Global Settings
-timeout 10                          #   [-1, 0, 0+] (skip, no timeout, x seconds)
-log_level 0                         #   [0-4]
-#enable_touch
-#enable_mouse
-#dont_scan_volumes "<LABEL>"        #   Prevent duplicate non-custom Linux entries using <LABEL> use `e2label` to label partition
-                                    #   or for LUKS `cryptsetup config /dev/<sdXY> --label <LABEL>``
-default_selection +                 #   Microsoft, Arch, + (most recently boot)
-resolution max
-
-# UI Settings
-# hideui banner, label, singleuser, arrows, hints, editor, badges
-hideui singleuser, hints, arrows, label, badges
-# shell, memtest, mok_tool, hidden_tags, shutdown, reboot, firmware
-showtools mok_tool, hidden_tags, reboot, shutdown, firmware
 
 menuentry "Arch Linux" {
     icon     icon /EFI/refind/icons/os_arch.png
