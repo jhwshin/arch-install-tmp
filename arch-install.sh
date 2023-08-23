@@ -98,6 +98,7 @@ BASE_PACKAGES=(
     linux-lts-headers
     linux-zen
     linux-zen-headers
+    btrfs-progs
     git
     iwd
     nano
