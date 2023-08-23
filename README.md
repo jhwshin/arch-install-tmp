@@ -130,6 +130,15 @@ Once installation is complete you may can chroot back into `/mnt` to modify or m
 $ arch-chroot /mnt
 ```
 
+Temporay bug fix:
+`/boot/EFI/refind/refind.conf`
+```ini
+...
+# /dev/sda4 = crypt root
+rd.luks.name=$(lsblk -o NAME,UUID | grep sda4 | awk '{print $2}')=crypt ...
+...
+```
+
 8. Finally umount and restart system:
 
 ```bash
