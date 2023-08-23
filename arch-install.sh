@@ -666,6 +666,9 @@ EOF
 
     # prevent snapshot slowdowns
     echo 'PRUNENAMES = ".snapshots"' >> /etc/updatedb.conf
+
+    ${DEBUG_MODE} && \
+        read; clear
 }
 
 setup_hooks() {
@@ -757,6 +760,9 @@ enable_systemd_units() {
     echo ">> Enabling Systemd Startups..."
 
     systemctl enable ${SYSTEMD_STARTUPS[*]}
+
+    ${DEBUG_MODE} && \
+        read; clear
 }
 
 rebuild_initramfs() {
