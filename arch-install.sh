@@ -187,7 +187,7 @@ setup_luks() {
             --iter-time 2000 \
             --pbkdf argon2id \
             --hash sha3-512 \
-            --label CRYPTROOT
+            --label "CRYPT_ROOT" \
             --verbose \
             "${ROOT_PARTITION}"
 
