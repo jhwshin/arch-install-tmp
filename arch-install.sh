@@ -469,6 +469,8 @@ edit_pacman() {
 }
 
 refind_fix() {
+    echo ">> Fixing Entires in refind.conf ..."
+
     CRYPT_UUID="$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')"
     RESUME_OFFSET="$(btrfs inspect-internal map-swapfile -r /mnt/.swapvol/swapfile)"
 
@@ -505,6 +507,10 @@ menuentry "Arch Linux" {
     }
 }
 EOF
+
+    ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
+        read; clear
 
 }
 
@@ -639,8 +645,16 @@ install_bootloader() {
 
             pacman -S refind --noconfirm
 
+    ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
+        read; clear
+
             # not working?
             refind-install
+
+    ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
+        read; clear
 
             # not working?
             CRYPT_UUID="$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')"
@@ -829,9 +843,14 @@ rebuild_initramfs() {
 }
 
 fstab_fix() {
-    sed -i '/UUID=(.*) +\/var\/lib\/libvirt\/images +btrfs +.*subvolid=(.*),.*/UUID=\1 \/var\/lib\/libvirt\/images btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@libvirt 0 0/' /etc/fstab
+    echo ">> Fixing BTRFS entries in fstab ..."
 
+    sed -i '/UUID=(.*) +\/var\/lib\/libvirt\/images +btrfs +.*subvolid=(.*),.*/UUID=\1 \/var\/lib\/libvirt\/images btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@libvirt 0 0/' /etc/fstab
     sed -i '/UUID=(.*) +\/.swapvol +btrfs +.*subvolid=(.*),.*/UUID=\1 \/.swapvol btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@swap 0 0/' /etc/fstab
+
+    ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
+        read; clear
 }
 
 # ------------------------------------------------
