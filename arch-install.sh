@@ -434,10 +434,10 @@ edit_pacman() {
     sed -i "/^#ParallelDownloads/ s/^#//" /etc/pacman.conf
 
     # add 32-bit mirrors
-    $ sed -i '/^#\[multilib\].*/,+1 s/^#//' /etc/pacman.conf
+    sed -i '/^#\[multilib\].*/,+1 s/^#//' /etc/pacman.conf
 
     # refresh pacman mirrors
-    $ pacman -Sy
+    pacman -Sy
 
     # verify new pacman configs
     ${DEBUG_MODE} && \
@@ -459,12 +459,18 @@ install_cpu_microcode() {
             ;;
         esac
     done
+
+    ${DEBUG_MODE} && \
+        read; clear
 }
 
 install_display_server() {
     echo ">> Installing Display Server..."
 
     pacman -S ${XORG_PACKAGES[*]} --noconfirm
+
+    ${DEBUG_MODE} && \
+        read; clear
 }
 
 install_gpu_drivers() {
@@ -501,6 +507,9 @@ EOF
 
         esac
     done
+
+    ${DEBUG_MODE} && \
+        read; clear
 }
 
 install_desktop_env() {
@@ -532,6 +541,9 @@ install_basic_packages() {
     echo ">> Installing Basic Packages..."
 
     pacman -S ${ADDITIONAL_PACKAGES[*]} --noconfirm
+
+    ${DEBUG_MODE} && \
+        read; clear
 }
 
 install_aur() {
@@ -546,6 +558,9 @@ EOF
 
     # install AUR packages
     yay -Sy ${AUR_PACKAGES[*]} --noconfirm
+
+    ${DEBUG_MODE} && \
+        read; clear
 }
 
 install_bootloader() {
@@ -554,6 +569,10 @@ install_bootloader() {
     case ${BOOTLOADER} in
         "refind")
             echo ">> Installing rEFIND Bootloader..."
+
+            # tmp
+            ${DEBUG_MODE} && \
+                read; clear
 
             yay -S \
                 refind \
@@ -634,6 +653,7 @@ EOF
 misc_configs() {
     echo ">> Setting up Reflector..."
 
+    mkdir -p /etc/xdg/reflector
 cat << EOF > /etc/xdg/reflector/reflector.conf
 --country "${MIRROR_REGIONS}" \
 --latest 10 \
