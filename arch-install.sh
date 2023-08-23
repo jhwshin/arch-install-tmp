@@ -187,6 +187,7 @@ setup_luks() {
             --iter-time 2000 \
             --pbkdf argon2id \
             --hash sha3-512 \
+            --label CRYPTROOT
             --verbose \
             "${ROOT_PARTITION}"
 
@@ -610,7 +611,7 @@ cat << EOF >> /boot/EFI/refind/refind.conf
 
 menuentry "Arch Linux" {
     icon     /EFI/refind/icons/os_arch.png
-    volume   "ROOT"
+    volume   "CRYPT_ROOT"
     loader   /vmlinuz-linux
     initrd   /initramfs-linux.img
     options  "rd.luks.name=${CRYPT_UUID}=crypt root=/dev/mapper/crypt rootflags=subvol=@ resume=/dev/mapper/crypt resume_offset=${RESUME_OFFSET} rw initrd=/intel-ucode.img"
