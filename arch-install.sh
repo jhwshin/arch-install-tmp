@@ -39,7 +39,10 @@ HOSTNAME="ARCH"
 
 SWAPFILE_SIZE=17408
 
-CPU="intel"
+CPU=(
+    "intel"
+)
+
 GPU=(
     "intel"
     # "nvidia"
@@ -447,13 +450,15 @@ edit_pacman() {
 install_cpu_microcode() {
     echo ">> Installing CPU Microcode..."
 
-    case ${CPU} in
-        "intel")
-            echo ">> Installing Intel CPU drivers..."
+    for cpu in ${CPU[@]}; do
+        case ${cpu} in
+            "intel")
+                echo ">> Installing Intel CPU drivers..."
 
-            pacman -S intel-ucode --noconfirm
-        ;;
-    esac
+                pacman -S intel-ucode --noconfirm
+            ;;
+        esac
+    done
 }
 
 install_display_server() {
@@ -682,7 +687,7 @@ Exec=/usr/bin/refind-install --shim /usr/share/shim-signed/shimx64.efi --localke
 EOF
 
 # rebuild initramfs hook after every nvidia update
-cat << EOF > /etc/pacman.d/hooks/nvidia.hooks
+cat << EOF > /etc/pacman.d/hooks/nvidia.hook
 [Trigger]
 Operation=Install
 Operation=Upgrade
@@ -738,10 +743,10 @@ rebuild_initramfs() {
     echo ">> Rebuilding Initramfs..."
 
     # replace MODULES array
-    sed -i "s/^MODULES=.*/MODULES=${MODULES}/" /etc/mkinitcpio.conf
+    sed -i "s/^MODULES=.*/MODULES=(${MODULES[*]})/" /etc/mkinitcpio.conf
 
     # replace HOOKS array
-    sed -i "s/^HOOKS=.*/HOOKS=${HOOKS}/" /etc/mkinitcpio.conf
+    sed -i "s/^HOOKS=.*/HOOKS=(${HOOKS[*]})/" /etc/mkinitcpio.conf
 
     # rebuild
     mkinitcpio -P
@@ -798,7 +803,7 @@ main () {
         install_cpu_microcode
         install_display_server
         install_gpu_drivers
-        instalL_desktop_env
+        install_desktop_env
         install_basic_packages
         install_aur
         install_bootloader
