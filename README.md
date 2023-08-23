@@ -159,9 +159,9 @@ $ yay -S refind linux
 10. Edit `/etc/fstab` (temp fix)
 
 ```ini
-UUID=<ROOT_UUID> /var/lib/libvirt/images btrfs rw,compress=no,ssd,discard=async,space_cache=v2,subvolid=<SUBVOLID>,subvol=/@libvirt 0 0
+UUID=<ROOT_UUID> /var/lib/libvirt/images btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=<SUBVOLID>,subvol=/@libvirt 0 0
 
-UUID=<ROOT_UUID> /.swapvol btrfs rw,compress=no,ssd,discard=async,space_cache=v2,subvolid=<SUBVOLID>,subvol=/@swap 0 0
+UUID=<ROOT_UUID> /.swapvol btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=<SUBVOLID>,subvol=/@swap 0 0
 ```
 
 Read [wiki]() for extras, details and ricing.
