@@ -155,5 +155,5 @@ A unified singlular bash script that contains install configs, pre-chroot and ch
 
 0. The script is first ran as shown in instructions above and pre-chroot functions are executed
 1. The script copies itself to `/mnt` and `arch-chroot` into `/mnt`
-2. Then it executes itself again from the copied cloned with `--chroot` parameter which will run then run the chroot functions
+2. Then it executes itself again from the copied script with `--chroot` parameter which will run the chroot functions
 3. Once script is finished it will exit chroot and clean up by removing itself from `/mnt`
