@@ -116,7 +116,7 @@ DE=(
     gnome-extra
 )
 
-ADDITIONAL_PACKGES=(
+ADDITIONAL_PACKAGES=(
     alsa-utils
     pavucontrol
     networkmanager
@@ -137,7 +137,6 @@ AUR_PACKAGES=(
     samba
     vlc
     mpv
-    visual-studio-code-bin
 )
 
 XORG_PACKAGES=(
@@ -578,10 +577,6 @@ install_bootloader() {
         "refind")
             echo ">> Installing rEFIND Bootloader..."
 
-            # tmp
-            ${DEBUG_MODE} && \
-                read; clear
-
             yay -S \
                 refind \
                 shim-signed \
@@ -589,12 +584,14 @@ install_bootloader() {
                 pamac-aur \
                 --noconfirm
 
+            ${DEBUG_MODE} && \
+                read; clear
+
             # create rEFIND keys and cert for secure boot
             refind-install --shim /usr/share/shim-signed/shimx64.efi --localkeys
 
             # sign with MOK
             sbsign --key /etc/refind.d/keys/refind_local.key --cert /etc/refind.d/keys/refind_local.crt --output /boot/vmlinuz-linux /boot/vmlinuz-linux
-            # sign other kernels?
 
             CRYPT_UUID=$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')
             RESUME_OFFSET=$(btrfs inspect-internal map-swapfile -r /.swapvol/swapfile)
