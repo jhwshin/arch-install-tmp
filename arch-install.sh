@@ -598,8 +598,10 @@ install_bootloader() {
 
             pacman -S refind --noconfirm
 
+            # not working?
             refind-install
 
+            # not working?
             CRYPT_UUID="$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')"
             RESUME_OFFSET="$(btrfs inspect-internal map-swapfile -r /.swapvol/swapfile)"
 
