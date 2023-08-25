@@ -8,7 +8,7 @@ Automated installer born from frequent experimentations, reinstalls and laziness
 
 Incrementally updated as I learn more ways to optimize and improve my system.
 
-I am still and always will be learning so please be careful not to blindly copy and paste commands.
+I am still and always will be learning so please be careful not to blindly copy, paste and run commands.
 
 Read [wiki]() for more info
 
