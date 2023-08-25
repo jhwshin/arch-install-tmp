@@ -149,7 +149,7 @@ $ yay -S shim-signed sbsigntools
 $ yay -S refind linux
 ```
 
-Read [wiki]() for extras, details and ricing.
+Read [wiki]() for extras, details and customizations.
 
 ## How it works
 
