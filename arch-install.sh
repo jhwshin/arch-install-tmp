@@ -37,6 +37,8 @@ TIMEZONE_CITY="Sydney"
 USERNAME="USER"
 HOSTNAME="ARCH"
 
+# 9216MB = 9GB
+# 17408MB = 17GB
 SWAPFILE_SIZE=17408
 
 CPU=(
@@ -49,9 +51,9 @@ GPU=(
 )
 BOOTLOADER="refind"
 
-# intel
+# intel = i915
 # usbhub
-# luks
+# keyboard = luks
 # nvidia kms
 MODULES=(
     i915
@@ -132,12 +134,12 @@ ADDITIONAL_PACKAGES=(
 AUR_PACKAGES=(
     firefox
     kitty
-    barrier
-    deluge
-    syncthing
-    samba
-    vlc
-    mpv
+    # barrier
+    # deluge
+    # syncthing
+    # samba
+    # vlc
+    # mpv
 )
 
 XORG_PACKAGES=(
@@ -397,7 +399,7 @@ set_timezone() {
 set_hosts() {
     echo ">> Setting up hosts..."
 
-cat << EOF > /etc/hosts
+cat > /etc/hosts << EOF
 127.0.0.1                               localhost
 ::1                                     localhost
 127.0.1.1       ${HOSTNAME}.localdomain ${HOSTNAME}
@@ -448,6 +450,7 @@ set_user() {
 edit_pacman() {
     echo ">> Editting pacman.conf ..."
 
+    # edit pacman.conf
     sed -i "s/^#UseSyslog/UseSyslog/" /etc/pacman.conf
     sed -i "s/^#Color/Color/" /etc/pacman.conf
     sed -i "s/#CheckSpace/CheckSpace/" etc/pacman.conf
@@ -468,13 +471,13 @@ edit_pacman() {
         read; clear
 }
 
-refind_fix() {
+pre_chroot_fix() {
     echo ">> Fixing Entires in refind.conf ..."
 
     CRYPT_UUID="$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')"
     RESUME_OFFSET="$(btrfs inspect-internal map-swapfile -r /mnt/.swapvol/swapfile)"
 
-cat << EOF >> /mnt/boot/EFI/refind/refind.conf
+cat >> /mnt/boot/EFI/refind/refind.conf << EOF
 menuentry "Arch Linux" {
     icon     /EFI/refind/icons/os_arch.png
     volume   "CRYPT_ROOT"
@@ -552,7 +555,7 @@ install_gpu_drivers() {
 
                 pacman -S ${GPU_INTEL_PACKAGES[*]} --noconfirm
 
-cat << EOF > /etc/X11/xorg.conf.d/20-intel.conf
+cat > /etc/X11/xorg.conf.d/20-intel.conf << EOF
 # prevent screen tearing for intel
 Section "Device"
     Identifier "Intel Graphics"
@@ -564,6 +567,7 @@ EOF
 
             "nvidia")
                 echo ">> Installing Nvidia GPU drivers..."
+                
                 pacman -S ${GPU_NVIDIA_PACKAGES[*]} --noconfirm
 
                 # generate nvidia xorg
@@ -645,6 +649,7 @@ install_bootloader() {
 
             pacman -S refind --noconfirm
 
+    # temp
     ${DEBUG_MODE} && \
         printf "\nPress Enter to continue...\n\n" && \
         read; clear
@@ -652,6 +657,7 @@ install_bootloader() {
             # not working?
             refind-install
 
+    # temp
     ${DEBUG_MODE} && \
         printf "\nPress Enter to continue...\n\n" && \
         read; clear
@@ -660,7 +666,12 @@ install_bootloader() {
             CRYPT_UUID="$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')"
             RESUME_OFFSET="$(btrfs inspect-internal map-swapfile -r /.swapvol/swapfile)"
 
-cat << EOF >> /boot/EFI/refind/refind.conf
+    # temp
+    ${DEBUG_MODE} && \
+        printf "\nPress Enter to continue...\n\n" && \
+        read; clear
+
+cat >> /boot/EFI/refind/refind.conf << EOF
 
 menuentry "Arch Linux" {
     icon     /EFI/refind/icons/os_arch.png
@@ -708,7 +719,9 @@ misc_configs() {
     echo ">> Setting up Reflector..."
 
     mkdir -p /etc/xdg/reflector
-cat << EOF > /etc/xdg/reflector/reflector.conf
+
+# mirror configs
+cat > /etc/xdg/reflector/reflector.conf << EOF
 --country "${MIRROR_REGIONS}" \
 --latest 10 \
 --number 10 \
@@ -732,7 +745,7 @@ setup_hooks() {
     mkdir /etc/pacman.d/hooks
 
 # sign kernel initramfs after every rebuild update
-cat << EOF > /etc/pacman.d/hooks/999-sign_kernel_for_secureboot.hook
+cat > /etc/pacman.d/hooks/999-sign_kernel_for_secureboot.hook << EOF
 [Trigger]
 Operation = Install
 Operation = Upgrade
@@ -752,7 +765,7 @@ Depends = grep
 EOF
 
 # sign after every rEFIND update
-cat << EOF > /etc/pacman.d/hooks/refind.hook
+cat > /etc/pacman.d/hooks/refind.hook << EOF
 [Trigger]
 Operation=Upgrade
 Type=Package
@@ -765,7 +778,7 @@ Exec=/usr/bin/refind-install --shim /usr/share/shim-signed/shimx64.efi --localke
 EOF
 
 # rebuild initramfs hook after every nvidia update
-cat << EOF > /etc/pacman.d/hooks/nvidia.hook
+cat > /etc/pacman.d/hooks/nvidia.hook << EOF
 [Trigger]
 Operation=Install
 Operation=Upgrade
@@ -790,7 +803,7 @@ Exec = /bin/sh -c 'while read -r trg; do case \$trg in linux) exit 0; esac; done
 EOF
 
 # refresh cache after zsh update
-cat << EOF > /etc/pacman.d/hooks/zsh.hook
+cat > /etc/pacman.d/hooks/zsh.hook << EOF
 [Trigger]
 Operation = Install
 Operation = Upgrade
@@ -842,9 +855,10 @@ rebuild_initramfs() {
         read; clear
 }
 
-fstab_fix() {
+chroot_fix() {
     echo ">> Fixing BTRFS entries in fstab ..."
 
+    # fix /etc/fstab
     sed -i '/UUID=(.*) +\/var\/lib\/libvirt\/images +btrfs +.*subvolid=(.*),.*/UUID=\1 \/var\/lib\/libvirt\/images btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@libvirt 0 0/' /etc/fstab
     sed -i '/UUID=(.*) +\/.swapvol +btrfs +.*subvolid=(.*),.*/UUID=\1 \/.swapvol btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@swap 0 0/' /etc/fstab
 
@@ -879,7 +893,8 @@ main () {
         # clean up copied script
         rm /mnt/home/${SCRIPT_NAME}
 
-        refind_fix
+        # refind bug fix
+        pre_chroot_fix
 
         exit
 
@@ -910,7 +925,9 @@ main () {
         enable_systemd_units
 
         rebuild_initramfs
-        fstab_fix
+
+        # fstab bug fix
+        chroot_fix
 
         echo ">> Finished chroot!"
 
