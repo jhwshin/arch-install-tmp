@@ -103,7 +103,7 @@ $ ping 8.8.8.8
 4. Install git:
 
 ```bash
-$ pacman -Sy
+$ pacman -Syy
 $ pacman -S git
 ```
 
