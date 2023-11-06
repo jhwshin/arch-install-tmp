@@ -39,7 +39,7 @@ HOSTNAME="ARCH"
 
 # 9216MB = 9GB
 # 17408MB = 17GB
-SWAPFILE_SIZE=17408
+SWAPFILE_SIZE="17408M"
 
 CPU=(
     "intel"
@@ -236,7 +236,6 @@ setup_btrfs() {
     # subvol to most likely skip snapshots
     btrfs subvolume create /mnt/@log
     btrfs subvolume create /mnt/@cache
-    btrfs subvolume create /mnt/@tmp
 
     # subvol to skip compression
     btrfs subvolume create /mnt/@libvirt
@@ -261,7 +260,6 @@ setup_btrfs() {
     mount -o noatime,nodiratime,compress=zstd:1,subvol=@snapshots /dev/mapper/crypt /mnt/.snapshots
     mount -o noatime,nodiratime,compress=zstd:1,subvol=@log /dev/mapper/crypt       /mnt/var/log
     mount -o noatime,nodiratime,compress=zstd:1,subvol=@cache /dev/mapper/crypt     /mnt/var/cache
-    mount -o noatime,nodiratime,compress=zstd:1,subvol=@tmp /dev/mapper/crypt       /mnt/tmp
 
     mount -o noatime,nodiratime,compress=zstd:1,subvolid=5 /dev/mapper/crypt        /mnt/btrfs
 
@@ -273,6 +271,7 @@ setup_btrfs() {
     # disable CoW for certain folders
     chattr +C /mnt/var/lib/libvirt/images
     chattr +C /mnt/.swapvol
+    chattr +C /mnt/tmp
 
     # mount EFI partition
     mount "${EFI_PARTITION}" /mnt/boot
@@ -287,7 +286,7 @@ setup_btrfs() {
 setup_swapfile() {
     echo ">> Setting up SWAP File..."
 
-    btrfs filesystem mkswapfile --size "${SWAPFILE_SIZE}"M /mnt/.swapvol/swapfile
+    btrfs filesystem mkswapfile --size "${SWAPFILE_SIZE}" /mnt/.swapvol/swapfile
     swapon /mnt/.swapvol/swapfile
 
     # verify swap
@@ -855,6 +854,7 @@ rebuild_initramfs() {
         read; clear
 }
 
+# quick fixes
 chroot_fix() {
     echo ">> Fixing BTRFS entries in fstab ..."
 
