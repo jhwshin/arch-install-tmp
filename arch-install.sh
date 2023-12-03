@@ -14,11 +14,9 @@ DEBUG_MODE=true
 #   START CONFIG
 # >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
-# LUKS container
+# BOOT and ROOT
 EFI_PARTITION="/dev/sda1"
-# BTRFS ROOT
 ROOT_PARTITION=""
-# ROOT_PARTITION="/dev/sda4"
 
 # $ reflector --list-countries
 MIRROR_REGIONS="AU,NZ"
@@ -60,10 +58,10 @@ MODULES=(
     usbhid
     xhci_hcd
     keyboard
-    nvidia
-    nvidia_modeset
-    nvidia_uvm
-    nvidia_drm
+    # nvidia
+    # nvidia_modeset
+    # nvidia_uvm
+    # nvidia_drm
 )
 
 HOOKS=(
@@ -471,6 +469,9 @@ edit_pacman() {
 }
 
 pre_chroot_fix() {
+
+    # weird bug can't find UUID (lsblk -o UUID) in arch-chroot
+    # hence done pre-chroot manual temp fix for now
     echo ">> Fixing Entires in refind.conf ..."
 
     CRYPT_UUID="$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')"
@@ -648,62 +649,7 @@ install_bootloader() {
 
             pacman -S refind --noconfirm
 
-    # temp
-    ${DEBUG_MODE} && \
-        printf "\nPress Enter to continue...\n\n" && \
-        read; clear
-
-            # not working?
             refind-install
-
-    # temp
-    ${DEBUG_MODE} && \
-        printf "\nPress Enter to continue...\n\n" && \
-        read; clear
-
-            # not working?
-            CRYPT_UUID="$(lsblk -o NAME,UUID | grep ${ROOT_PARTITION#/dev/} | awk '{print $2}')"
-            RESUME_OFFSET="$(btrfs inspect-internal map-swapfile -r /.swapvol/swapfile)"
-
-    # temp
-    ${DEBUG_MODE} && \
-        printf "\nPress Enter to continue...\n\n" && \
-        read; clear
-
-cat >> /boot/EFI/refind/refind.conf << EOF
-
-menuentry "Arch Linux" {
-    icon     /EFI/refind/icons/os_arch.png
-    volume   "CRYPT_ROOT"
-    loader   /vmlinuz-linux
-    initrd   /initramfs-linux.img
-    options  "rd.luks.name=${CRYPT_UUID}=crypt root=/dev/mapper/crypt rootflags=subvol=@ resume=/dev/mapper/crypt resume_offset=${RESUME_OFFSET} rw initrd=/intel-ucode.img initrd=/initramfs-linux.img"
-    
-    submenuentry "Boot using fallback initramfs" {
-        loader          /vmlinuz-linux
-        initrd          /initramfs-linux-fallback.img
-    }
-    submenuentry "Boot to terminal" {
-        add_options "systemd.unit=multi-user.target"
-    }
-    submenuentry "Linux-lts" {
-        loader          /vmlinuz-linux-lts
-        initrd          /initramfs-linux-lts.img
-    }
-    submenuentry "Boot using Linux-lts fallback initramfs" {
-        loader          /vmlinuz-linux-lts
-        initrd          /initramfs-linux-lts-fallback.img
-    }
-    submenuentry "Linux-zen" {
-        loader          /vmlinuz-linux-zen
-        initrd          /initramfs-linux-zen.img
-    }
-    submenuentry "Boot using Linux-zen fallback initramfs" {
-        loader          /vmlinuz-linux-zen
-        initrd          /initramfs-linux-zen-fallback.img
-    }
-}
-EOF
 
             # verify refind configs
             ${DEBUG_MODE} && \
@@ -858,7 +804,9 @@ rebuild_initramfs() {
 chroot_fix() {
     echo ">> Fixing BTRFS entries in fstab ..."
 
-    # fix /etc/fstab
+    # bug: genfstab is not adding correct parameters when set creating these btrfs
+    # since their CoW is disabled
+    # temp fix /etc/fstab
     sed -i '/UUID=(.*) +\/var\/lib\/libvirt\/images +btrfs +.*subvolid=(.*),.*/UUID=\1 \/var\/lib\/libvirt\/images btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@libvirt 0 0/' /etc/fstab
     sed -i '/UUID=(.*) +\/.swapvol +btrfs +.*subvolid=(.*),.*/UUID=\1 \/.swapvol btrfs rw,noatime,nodiratime,compress=no,ssd,discard=async,space_cache=v2,subvolid=\2,subvol=/@swap 0 0/' /etc/fstab
 
@@ -926,7 +874,7 @@ main () {
 
         rebuild_initramfs
 
-        # fstab bug fix
+        # btrfs fstab bug fix
         chroot_fix
 
         echo ">> Finished chroot!"
