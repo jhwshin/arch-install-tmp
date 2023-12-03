@@ -4,13 +4,7 @@
 
 A simple Arch Linux installer script written for myself.
 
-Automated installer born from frequent experimentations, reinstalls and laziness.
-
-Incrementally updated as I learn more ways to optimize and improve my system.
-
-I am still and always will be learning so please be careful not to blindly copy, paste and run commands.
-
-Read [wiki]() for more info
+Still learning so please be careful not to blindly copy / paste commands as they may not suit and break your system.
 
 ## Summary
 
@@ -48,7 +42,7 @@ Read [wiki]() for more info
 
 ## Instructions
 
-0. Verify EFI
+0. Verify system is running on EFI
 
 ```bash
 # if directory is populated system is EFI
@@ -65,7 +59,7 @@ $ ls /sys/firmware/efi/efivars
 $ timedatectl set-ntp true
 ```
 
-2. Partition Table
+2. List Partition Table
 
 ```bash
 # quick disk list
@@ -104,7 +98,7 @@ $ ping 8.8.8.8
 
 ```bash
 $ pacman -Syy
-$ pacman -S git
+$ pacman -S git glibc
 ```
 
 5. Clone repo:
@@ -139,7 +133,7 @@ $ umount -R /mnt
 $ reboot
 ```
 
-9. After reboot setup secure boot:
+9. After reboot setup secure boot if required:
 
 ```bash
 # install secure boot tools
@@ -148,14 +142,3 @@ $ yay -S shim-signed sbsigntools
 # trigger hooks by reinstalling package
 $ yay -S refind linux
 ```
-
-Read [wiki]() for extras, details and customizations.
-
-## How it works
-
-A unified singlular bash script that contains install configs, pre-chroot and chroot setup functions.
-
-0. The script is first ran as shown in instructions above and pre-chroot functions are executed
-1. The script copies itself to `/mnt` and `arch-chroot` into `/mnt`
-2. Then it executes itself again from the copied script with `--chroot` parameter which will run the chroot functions
-3. Once script is finished it will exit chroot and clean up by removing itself from `/mnt`
